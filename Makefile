@@ -3,7 +3,7 @@ GOOS?=linux
 APP?=apigateway
 PROJECT?=github.com/seagullbird/headr-apigateway
 COMMIT?=$(shell git rev-parse --short HEAD)
-PORT?=:8689
+PORT?=8689
 
 
 clean:
@@ -11,7 +11,7 @@ clean:
 
 build: clean
 	GOARCH=${GOARCH} GOOS=${GOOS} go build \
-	-ldflags "-s -w -X ${PROJECT}/config.PORT=${PORT}" \
+	-ldflags "-s -w -X ${PROJECT}/config.PORT=:${PORT}" \
 	-o ${APP}
 
 container: build
