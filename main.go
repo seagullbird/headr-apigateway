@@ -27,9 +27,9 @@ func main() {
 	r := mux.NewRouter()
 
 	// Sitemgr
-	conn, err := grpc.Dial("sitemgr", grpc.WithInsecure())
+	conn, err := grpc.Dial("sitemgr:2018", grpc.WithInsecure())
 	if err != nil {
-		fmt.Printf("Error connecting sitemgr: %v\n", err)
+		logger.Log("Error connecting sitemgr", err.Error())
 	}
 	service := sitemgrtransport.NewGRPCClient(conn, logger)
 	newsiteEndpoint := sitemgrendpoint.MakeNewSiteEndpoint(service)
