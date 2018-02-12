@@ -38,10 +38,7 @@ func main() {
 	{
 		sitemgrconn := initGRPCConnection("sitemgr", logger)
 		service := sitemgrtransport.NewGRPCClient(sitemgrconn, logger)
-		newsiteEndpoint := sitemgrendpoint.MakeNewSiteEndpoint(service)
-		endpoints := sitemgrendpoint.Set{
-			NewSiteEndpoint: newsiteEndpoint,
-		}
+		endpoints := service.(sitemgrendpoint.Set)
 		r.PathPrefix("/sitemgr").Handler(http.StripPrefix("/sitemgr", sitemgrtransport.NewHTTPHandler(endpoints, logger)))
 	}
 
