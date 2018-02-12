@@ -14,6 +14,14 @@ import (
 	"github.com/seagullbird/headr-apigateway/config"
 )
 
+func initGRPCConnection(svcname string, logger log.Logger) *grpc.ClientConn {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:2018", svcname), grpc.WithInsecure())
+	if err != nil {
+		logger.Log(fmt.Sprintf("Error connecting %s", svcname), err.Error())
+	}
+	return conn
+}
+
 func main() {
 	// Logging
 	var logger log.Logger
@@ -27,23 +35,15 @@ func main() {
 	r := mux.NewRouter()
 
 	// Sitemgr
-	conn, err := grpc.Dial("sitemgr:2018", grpc.WithInsecure())
-	if err != nil {
-		logger.Log("Error connecting sitemgr", err.Error())
+	{
+		sitemgrconn := initGRPCConnection("sitemgr", logger)
+		service := sitemgrtransport.NewGRPCClient(sitemgrconn, logger)
+		newsiteEndpoint := sitemgrendpoint.MakeNewSiteEndpoint(service)
+		endpoints := sitemgrendpoint.Set{
+			NewSiteEndpoint: newsiteEndpoint,
+		}
+		r.PathPrefix("/sitemgr").Handler(http.StripPrefix("/sitemgr", sitemgrtransport.NewHTTPHandler(endpoints, logger)))
 	}
-	service := sitemgrtransport.NewGRPCClient(conn, logger)
-	newsiteEndpoint := sitemgrendpoint.MakeNewSiteEndpoint(service)
-
-	endpoints := sitemgrendpoint.Set{
-		NewSiteEndpoint: newsiteEndpoint,
-	}
-
-	// Routes
-	// for test
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello world!"))
-	})
-	r.PathPrefix("/sitemgr").Handler(http.StripPrefix("/sitemgr", sitemgrtransport.NewHTTPHandler(endpoints, logger)))
 
 	// Interrupt handler.
 	errc := make(chan error)
