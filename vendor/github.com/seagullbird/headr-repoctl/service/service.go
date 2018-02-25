@@ -2,21 +2,24 @@ package service
 
 import (
 	"context"
-	"github.com/seagullbird/headr-repoctl/mq_helper"
-	"time"
 	"github.com/go-kit/kit/log"
+	"github.com/seagullbird/headr-common/mq"
+	"github.com/seagullbird/headr-common/mq/dispatch"
+	"github.com/seagullbird/headr-repoctl/config"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
-	"github.com/seagullbird/headr-repoctl/config"
-	"os"
+	"time"
 )
 
 type Service interface {
 	NewSite(ctx context.Context, email, sitename string) error
 	DeleteSite(ctx context.Context, email, sitename string) error
+	NewPost(ctx context.Context, author, sitename, filename, content string) error
 }
 
-func New(dispatcher mq_helper.Dispatcher, logger log.Logger) Service {
+func New(dispatcher dispatch.Dispatcher, logger log.Logger) Service {
 	var svc Service
 	{
 		svc = NewBasicService(dispatcher)
@@ -26,22 +29,22 @@ func New(dispatcher mq_helper.Dispatcher, logger log.Logger) Service {
 }
 
 type basicService struct {
-	dispatcher mq_helper.Dispatcher
+	dispatcher dispatch.Dispatcher
 }
 
-func NewBasicService(dispatcher mq_helper.Dispatcher) basicService {
+func NewBasicService(dispatcher dispatch.Dispatcher) basicService {
 	return basicService{
 		dispatcher: dispatcher,
 	}
 }
 
 func (s basicService) NewSite(ctx context.Context, email, sitename string) error {
-	evt := mq_helper.NewSiteEvent{
+	evt := mq.NewSiteEvent{
 		email,
 		sitename,
 		time.Now().Unix(),
 	}
-	return s.dispatcher.DispatchMessage(evt)
+	return s.dispatcher.DispatchMessage("new_site", evt)
 }
 
 func (s basicService) DeleteSite(ctx context.Context, email, sitename string) error {
@@ -53,7 +56,16 @@ func (s basicService) DeleteSite(ctx context.Context, email, sitename string) er
 		return MakeErrUnexpected(err)
 	}
 	cmd := exec.Command("rm", "-rf", sitepath)
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s basicService) NewPost(ctx context.Context, author, sitename, filename, content string) error {
+	postPath := filepath.Join(config.SITESDIR, author, sitename, "source", "content", "posts", filename)
+	if err := ioutil.WriteFile(postPath, []byte(content), 644); err != nil {
 		return err
 	}
 	return nil

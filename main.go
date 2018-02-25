@@ -5,6 +5,8 @@ import (
 	"os"
 	sitemgrtransport "github.com/seagullbird/headr-sitemgr/transport"
 	sitemgrendpoint "github.com/seagullbird/headr-sitemgr/endpoint"
+	contentmgrtransport "github.com/seagullbird/headr-contentmgr/transport"
+	contentmgrendpoint "github.com/seagullbird/headr-contentmgr/endpoint"
 	"google.golang.org/grpc"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -40,6 +42,14 @@ func main() {
 		service := sitemgrtransport.NewGRPCClient(sitemgrconn, logger)
 		endpoints := service.(sitemgrendpoint.Set)
 		r.PathPrefix("/sitemgr").Handler(http.StripPrefix("/sitemgr", sitemgrtransport.NewHTTPHandler(endpoints, logger)))
+	}
+
+	// Contentmgr
+	{
+		contentmgrconn := initGRPCConnection("contentmgr", logger)
+		service := contentmgrtransport.NewGRPCClient(contentmgrconn, logger)
+		endpoints := service.(contentmgrendpoint.Set)
+		r.PathPrefix("/contentmgr").Handler(http.StripPrefix("/contentmgr", contentmgrtransport.NewHTTPHandler(endpoints, logger)))
 	}
 
 	// Interrupt handler.

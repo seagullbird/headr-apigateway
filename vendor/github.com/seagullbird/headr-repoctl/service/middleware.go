@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/go-kit/kit/log"
 	"context"
+	"github.com/go-kit/kit/log"
 )
 
 // Middleware describes a service (as opposed to endpoint) middleware.
@@ -18,8 +18,8 @@ func LoggingMiddleware(logger log.Logger) Middleware {
 }
 
 type loggingMiddleware struct {
-	logger	log.Logger
-	next	Service
+	logger log.Logger
+	next   Service
 }
 
 func (mw loggingMiddleware) NewSite(ctx context.Context, email, sitename string) (err error) {
@@ -29,7 +29,7 @@ func (mw loggingMiddleware) NewSite(ctx context.Context, email, sitename string)
 }
 
 func (mw loggingMiddleware) DeleteSite(ctx context.Context, email, sitename string) (err error) {
-	err = mw.next.NewSite(ctx, email, sitename)
+	err = mw.next.DeleteSite(ctx, email, sitename)
 	mw.logger.Log("method", "DeleteSite", "email", email, "sitename", sitename, "err", err)
 	return
 }
