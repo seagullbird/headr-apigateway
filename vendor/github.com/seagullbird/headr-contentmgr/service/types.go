@@ -14,14 +14,13 @@ type FrontMatter struct {
 }
 
 type Post struct {
-	Id       int         `json:"id"`
 	Author   string      `json:"author"`
 	Sitename string      `json:"sitename"`
 	Filename string      `json:"filename"`
 	Filetype string      `json:"filetype"`
 	FM       FrontMatter `json:"fm`
 	Summary  string      `json:"summary"`
-	Content  string      `json:"content" gorm:"-"`
+	Content  string      `json:"content"`
 }
 
 func (fm FrontMatter) String() string {
@@ -41,7 +40,6 @@ func (p Post) String() string {
 
 func (p Post) Model() *db.Post {
 	return &db.Post{
-		Id:       p.Id,
 		Author:   p.Author,
 		Sitename: p.Sitename,
 		Filename: p.Filename,
