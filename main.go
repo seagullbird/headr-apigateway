@@ -1,19 +1,19 @@
 package main
 
 import (
-	"github.com/go-kit/kit/log"
-	"os"
-	sitemgrtransport "github.com/seagullbird/headr-sitemgr/transport"
-	sitemgrendpoint "github.com/seagullbird/headr-sitemgr/endpoint"
-	contentmgrtransport "github.com/seagullbird/headr-contentmgr/transport"
-	contentmgrendpoint "github.com/seagullbird/headr-contentmgr/endpoint"
-	"google.golang.org/grpc"
 	"fmt"
+	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
+	"github.com/seagullbird/headr-apigateway/config"
+	contentmgrendpoint "github.com/seagullbird/headr-contentmgr/endpoint"
+	contentmgrtransport "github.com/seagullbird/headr-contentmgr/transport"
+	sitemgrendpoint "github.com/seagullbird/headr-sitemgr/endpoint"
+	sitemgrtransport "github.com/seagullbird/headr-sitemgr/transport"
+	"google.golang.org/grpc"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
-	"github.com/seagullbird/headr-apigateway/config"
 )
 
 func initGRPCConnection(svcname string, logger log.Logger) *grpc.ClientConn {
