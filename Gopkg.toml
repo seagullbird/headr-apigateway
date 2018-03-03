@@ -11,10 +11,10 @@
 #   name = "github.com/user/project"
 #   version = "1.0.0"
 #
-# [[constraint]]
-#   name = "github.com/seagullbird/headr-contentmgr"
-#   branch = "dev"
-#   source = "github.com/seagullbird/headr-contentmgr"
+[[constraint]]
+  name = "github.com/seagullbird/headr-contentmgr"
+  branch = "dev"
+  source = "github.com/seagullbird/headr-contentmgr"
 #
 # [[override]]
 #  name = "github.com/x/y"

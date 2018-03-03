@@ -28,3 +28,13 @@ type NewPostRequest struct {
 type NewPostResponse struct {
 	Err error `json:"-"`
 }
+
+type RemovePostRequest struct {
+	Author   string
+	Sitename string
+	Filename string
+}
+
+type RemovePostResponse struct {
+	Err error `json:"-"`
+}

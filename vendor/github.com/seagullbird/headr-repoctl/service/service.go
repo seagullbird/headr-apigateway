@@ -17,6 +17,7 @@ type Service interface {
 	NewSite(ctx context.Context, email, sitename string) error
 	DeleteSite(ctx context.Context, email, sitename string) error
 	NewPost(ctx context.Context, author, sitename, filename, content string) error
+	RemovePost(ctx context.Context, author, sitename, filename string) error
 }
 
 func New(dispatcher dispatch.Dispatcher, logger log.Logger) Service {
@@ -39,9 +40,10 @@ func NewBasicService(dispatcher dispatch.Dispatcher) basicService {
 }
 
 func (s basicService) NewSite(ctx context.Context, email, sitename string) error {
-	evt := mq.NewSiteEvent{
+	evt := mq.SiteUpdatedEvent{
 		email,
 		sitename,
+		config.InitialTheme,
 		time.Now().Unix(),
 	}
 	return s.dispatcher.DispatchMessage("new_site", evt)
@@ -64,9 +66,37 @@ func (s basicService) DeleteSite(ctx context.Context, email, sitename string) er
 }
 
 func (s basicService) NewPost(ctx context.Context, author, sitename, filename, content string) error {
-	postPath := filepath.Join(config.SITESDIR, author, sitename, "source", "content", "posts", filename)
-	if err := ioutil.WriteFile(postPath, []byte(content), 644); err != nil {
+	postsPath := filepath.Join(config.SITESDIR, author, sitename, "source", "content", "posts")
+	if _, err := os.Stat(postsPath); err != nil {
+		if os.IsNotExist(err) {
+			os.MkdirAll(postsPath, 0644)
+		} else {
+			return err
+		}
+	}
+	postPath := filepath.Join(postsPath, filename)
+	if err := ioutil.WriteFile(postPath, []byte(content), 0644); err != nil {
 		return err
 	}
-	return nil
+	// Generate site
+	evt := mq.SiteUpdatedEvent{
+		Email:      author,
+		SiteName:   sitename,
+		Theme:      config.InitialTheme,
+		ReceivedOn: time.Now().Unix(),
+	}
+	return s.dispatcher.DispatchMessage("re_generate", evt)
+}
+
+func (s basicService) RemovePost(ctx context.Context, author, sitename, filename string) error {
+	postPath := filepath.Join(config.SITESDIR, author, sitename, "source", "content", "posts", filename)
+	if _, err := os.Stat(postPath); err != nil {
+		if os.IsNotExist(err) {
+			return MakeErrPathNotExist(postPath)
+		}
+		return MakeErrUnexpected(err)
+	}
+	cmd := exec.Command("rm", postPath)
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

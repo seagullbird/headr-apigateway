@@ -15,6 +15,7 @@ type grpcServer struct {
 	newsite    grpctransport.Handler
 	deletesite grpctransport.Handler
 	newpost    grpctransport.Handler
+	rmpost     grpctransport.Handler
 }
 
 func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.RepoctlServer {
@@ -38,6 +39,12 @@ func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.RepoctlServer {
 			endpoints.NewPostEndpoint,
 			decodeGRPCNewPostRequest,
 			encodeGRPCNewPostResponse,
+			options...,
+		),
+		rmpost: grpctransport.NewServer(
+			endpoints.RemovePostEndpoint,
+			decodeGRPCRemovePostRequest,
+			encodeGRPCRemovePostResponse,
 			options...,
 		),
 	}
@@ -77,6 +84,17 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 			pb.NewPostReply{},
 		).Endpoint()
 	}
+	var deletepostEndpoint kitendpoint.Endpoint
+	{
+		deletepostEndpoint = grpctransport.NewClient(
+			conn,
+			"pb.Repoctl",
+			"RemovePost",
+			encodeGRPCRemovePostRequest,
+			decodeGRPCRemovePostResponse,
+			pb.RemovePostReply{},
+		).Endpoint()
+	}
 	// Returning the endpoint.Set as a service.Service relies on the
 	// endpoint.Set implementing the Service methods. That's just a simple bit
 	// of glue code.
@@ -84,6 +102,7 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 		NewSiteEndpoint:    newsiteEndpoint,
 		DeleteSiteEndpoint: deletesiteEndpoint,
 		NewPostEndpoint:    newpostEndpoint,
+		RemovePostEndpoint: deletepostEndpoint,
 	}
 }
 
@@ -109,4 +128,12 @@ func (s *grpcServer) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb.N
 		return nil, err
 	}
 	return rep.(*pb.NewPostReply), nil
+}
+
+func (s *grpcServer) RemovePost(ctx context.Context, req *pb.RemovePostRequest) (*pb.RemovePostReply, error) {
+	_, rep, err := s.rmpost.ServeGRPC(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return rep.(*pb.RemovePostReply), nil
 }
