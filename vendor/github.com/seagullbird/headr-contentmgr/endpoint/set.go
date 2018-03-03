@@ -60,7 +60,7 @@ func MakeDeletePostEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(DeletePostRequest)
 		err = svc.DeletePost(ctx, req.Id)
-		return NewPostResponse{Err: err}, err
+		return DeletePostResponse{Err: err}, err
 	}
 }
 

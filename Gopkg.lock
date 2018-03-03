@@ -74,11 +74,10 @@
   revision = "05dc26f6f33f5b257d4c501526eea862b53bec27"
 
 [[projects]]
-  branch = "dev"
+  branch = "master"
   name = "github.com/seagullbird/headr-contentmgr"
   packages = ["db","endpoint","pb","service","transport"]
-  revision = "df4e188ac76b6382e68ac606eb8b58d26b7c498b"
-  source = "github.com/seagullbird/headr-contentmgr"
+  revision = "bc0b2d390c6d22a57a97f90ed6465da7225d2218"
 
 [[projects]]
   branch = "master"
@@ -125,6 +124,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed0af45910dfd98961ff9382ca6f79dd884f86ee53744c9c5fd5b41821b3d76c"
+  inputs-digest = "d58e5b9db7a72e2abd107e2ef4348d1cb450eb283e1a8bf7e4309b5bdcc05810"
   solver-name = "gps-cdcl"
   solver-version = 1
