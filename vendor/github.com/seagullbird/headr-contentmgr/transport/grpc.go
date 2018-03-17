@@ -16,6 +16,7 @@ import (
 type grpcServer struct {
 	newpost grpctransport.Handler
 	delpost grpctransport.Handler
+	getpost grpctransport.Handler
 }
 
 func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.ContentmgrServer {
@@ -33,6 +34,12 @@ func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.ContentmgrServe
 			endpoints.DeletePostEndpoint,
 			decodeGRPCDeletePostRequest,
 			encodeGRPCDeletePostResponse,
+			options...,
+		),
+		getpost: grpctransport.NewServer(
+			endpoints.GetPostEndpoint,
+			decodeGRPCGetPostRequest,
+			encodeGRPCGetPostResponse,
 			options...,
 		),
 	}
@@ -62,12 +69,24 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 			pb.DeletePostReply{},
 		).Endpoint()
 	}
+	var getpostEndpoint kitendpoint.Endpoint
+	{
+		getpostEndpoint = grpctransport.NewClient(
+			conn,
+			"pb.Contentmgr",
+			"GetPost",
+			encodeGRPCGetPostRequest,
+			decodeGRPCGetPostResponse,
+			pb.GetPostReply{},
+		).Endpoint()
+	}
 	// Returning the endpoint.Set as a service.Service relies on the
 	// endpoint.Set implementing the Service methods. That's just a simple bit
 	// of glue code.
 	return endpoint.Set{
 		NewPostEndpoint:    newpostEndpoint,
 		DeletePostEndpoint: delpostEndpoint,
+		GetPostEndpoint:    getpostEndpoint,
 	}
 }
 
@@ -87,17 +106,24 @@ func (s *grpcServer) DeletePost(ctx context.Context, req *pb.DeletePostRequest) 
 	return rep.(*pb.DeletePostReply), nil
 }
 
+func (s *grpcServer) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.GetPostReply, error) {
+	_, rep, err := s.getpost.ServeGRPC(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return rep.(*pb.GetPostReply), nil
+}
+
 // NewPost
 func encodeGRPCNewPostRequest(_ context.Context, request interface{}) (interface{}, error) {
 	req := request.(endpoint.NewPostRequest)
 	return &pb.CreateNewPostRequest{
-		Title:    req.Post.Title,
-		Summary:  req.Post.Summary,
-		Content:  req.Post.Content,
-		Tags:     req.Post.Tags,
-		Author:   req.Post.Author,
-		Sitename: req.Sitename,
-		Date:     req.Post.Date,
+		Title:   req.Post.Title,
+		Summary: req.Post.Summary,
+		Content: req.Post.Content,
+		Tags:    req.Post.Tags,
+		SiteId:  uint64(req.Post.SiteID),
+		Date:    req.Post.Date,
 	}, nil
 }
 
@@ -105,8 +131,7 @@ func decodeGRPCNewPostRequest(_ context.Context, grpcReq interface{}) (interface
 	req := grpcReq.(*pb.CreateNewPostRequest)
 	return endpoint.NewPostRequest{
 		Post: db.Post{
-			Author:   req.Author,
-			Sitename: req.Sitename,
+			SiteID:   uint(req.SiteId),
 			Filename: req.Title,
 			Filetype: "md",
 			Title:    req.Title,
@@ -157,6 +182,49 @@ func encodeGRPCDeletePostResponse(_ context.Context, response interface{}) (inte
 func decodeGRPCDeletePostResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
 	reply := grpcReply.(*pb.DeletePostReply)
 	return endpoint.DeletePostResponse{Err: str2err(reply.Err)}, nil
+}
+
+// GetPost
+func encodeGRPCGetPostRequest(_ context.Context, request interface{}) (interface{}, error) {
+	req := request.(endpoint.GetPostRequest)
+	return &pb.GetPostRequest{
+		Id: uint64(req.Id),
+	}, nil
+}
+
+func decodeGRPCGetPostRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
+	req := grpcReq.(*pb.GetPostRequest)
+	return endpoint.GetPostRequest{
+		Id: uint(req.Id),
+	}, nil
+}
+
+func encodeGRPCGetPostResponse(_ context.Context, response interface{}) (interface{}, error) {
+	resp := response.(endpoint.GetPostResponse)
+	return &pb.GetPostReply{
+		Title:   resp.Post.Title,
+		Summary: resp.Post.Summary,
+		Content: resp.Post.Content,
+		Tags:    resp.Post.Tags,
+		SiteId:  uint64(resp.Post.SiteID),
+		Date:    resp.Post.Date,
+		Err:     err2str(resp.Err),
+	}, nil
+}
+
+func decodeGRPCGetPostResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
+	reply := grpcReply.(*pb.GetPostReply)
+	return endpoint.GetPostResponse{
+		Post: db.Post{
+			Title:   reply.Title,
+			Summary: reply.Summary,
+			Content: reply.Content,
+			Tags:    reply.Tags,
+			SiteID:  uint(reply.SiteId),
+			Date:    reply.Date,
+		},
+		Err: str2err(reply.Err),
+	}, nil
 }
 
 func err2str(err error) string {

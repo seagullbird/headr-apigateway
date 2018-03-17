@@ -23,14 +23,20 @@ type loggingMiddleware struct {
 	next   Service
 }
 
-func (mw loggingMiddleware) NewSite(ctx context.Context, email, sitename string) (err error) {
-	err = mw.next.NewSite(ctx, email, sitename)
-	mw.logger.Log("method", "NewSite", "email", email, "sitename", sitename, "err", err)
+func (mw loggingMiddleware) NewSite(ctx context.Context, userID uint, sitename string) (err error) {
+	err = mw.next.NewSite(ctx, userID, sitename)
+	mw.logger.Log("method", "NewSite", "userID", userID, "sitename", sitename, "err", err)
 	return
 }
 
-func (mw loggingMiddleware) DeleteSite(ctx context.Context, email, sitename string) (err error) {
-	err = mw.next.DeleteSite(ctx, email, sitename)
-	mw.logger.Log("method", "DeleteSite", "email", email, "sitename", sitename, "err", err)
+func (mw loggingMiddleware) DeleteSite(ctx context.Context, siteID uint) (err error) {
+	err = mw.next.DeleteSite(ctx, siteID)
+	mw.logger.Log("method", "DeleteSite", "siteID", siteID, "err", err)
 	return
+}
+
+func (mw loggingMiddleware) CheckSitenameExists(ctx context.Context, sitename string) (bool, error) {
+	exists, err := mw.next.CheckSitenameExists(ctx, sitename)
+	mw.logger.Log("method", "CheckSitenameExists", "sitename", sitename, "err", err)
+	return exists, err
 }
