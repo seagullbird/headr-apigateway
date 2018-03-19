@@ -3,21 +3,25 @@ package db
 import (
 	"github.com/go-kit/kit/log"
 	"github.com/jinzhu/gorm"
+	// used for database connection
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
+// Store deals with database operations with table site.
 type Store interface {
 	InsertSite(site *Site) (id uint, err error)
 	DeleteSite(site *Site) error
 	GetSite(id uint) (*Site, error)
 	PatchSite(site *Site) error
 	CheckSitenameExists(sitename string) (bool, error)
+	GetSiteIDByUserID(userID string) (uint, error)
 }
 
 type databaseStore struct {
 	db *gorm.DB
 }
 
+// New creates a databaseStore instance
 func New(logger log.Logger) Store {
 	db, err := gorm.Open("postgres", "host=postgresql-postgresql port=5432 user=postgres dbname=postgres password=qBDXNlz276 sslmode=disable")
 	if err != nil {
@@ -55,4 +59,10 @@ func (s *databaseStore) CheckSitenameExists(sitename string) (bool, error) {
 	var site Site
 	s.db.Where("sitename = ?", sitename).First(&site)
 	return site != Site{}, nil
+}
+
+func (s *databaseStore) GetSiteIDByUserID(userID string) (uint, error) {
+	var site Site
+	s.db.Where("user_id = ?", userID).First(&site)
+	return site.Model.ID, nil
 }

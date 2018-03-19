@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"github.com/go-errors/errors"
+	"github.com/go-kit/kit/auth/jwt"
 	kitendpoint "github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
 	grpctransport "github.com/go-kit/kit/transport/grpc"
@@ -16,11 +17,14 @@ type grpcServer struct {
 	newsite             grpctransport.Handler
 	deletesite          grpctransport.Handler
 	checksitenameexists grpctransport.Handler
+	getsiteidbyuserid   grpctransport.Handler
 }
 
+// NewGRPCServer makes a set of endpoints available as a gRPC SitemgrServer.
 func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.SitemgrServer {
 	options := []grpctransport.ServerOption{
 		grpctransport.ServerErrorLogger(logger),
+		grpctransport.ServerBefore(jwt.GRPCToContext()),
 	}
 	return &grpcServer{
 		newsite: grpctransport.NewServer(
@@ -41,10 +45,22 @@ func NewGRPCServer(endpoints endpoint.Set, logger log.Logger) pb.SitemgrServer {
 			encodeGRPCCheckSitenameExistsResponse,
 			options...,
 		),
+		getsiteidbyuserid: grpctransport.NewServer(
+			endpoints.GetSiteIDByUserIDEndpoint,
+			decodeGRPCGetSiteIDByUserIDRequest,
+			encodeGRPCGetSiteIDByUserIDResponse,
+			options...,
+		),
 	}
 }
 
+// NewGRPCClient returns an SitemgrService backed by a gRPC server at the other end
+// of the conn. The caller is responsible for constructing the conn, and
+// eventually closing the underlying transport.
 func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
+	options := []grpctransport.ClientOption{
+		grpctransport.ClientBefore(jwt.ContextToGRPC()),
+	}
 	var newsiteEndpoint kitendpoint.Endpoint
 	{
 		newsiteEndpoint = grpctransport.NewClient(
@@ -54,6 +70,7 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 			encodeGRPCNewSiteRequest,
 			decodeGRPCNewSiteResponse,
 			pb.CreateNewSiteReply{},
+			options...,
 		).Endpoint()
 	}
 	var deletesiteEndpoint kitendpoint.Endpoint
@@ -65,6 +82,7 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 			encodeGRPCDeleteSiteRequest,
 			decodeGRPCDeleteSiteResponse,
 			pb.ProxyDeleteSiteReply{},
+			options...,
 		).Endpoint()
 	}
 	var checksitenameexistsEndpoint kitendpoint.Endpoint
@@ -76,6 +94,19 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 			encodeGRPCCheckSitenameExistsRequest,
 			decodeGRPCCheckSitenameExistsResponse,
 			pb.CheckSitenameExistsReply{},
+			options...,
+		).Endpoint()
+	}
+	var getsiteidbyuseridEndpoint kitendpoint.Endpoint
+	{
+		getsiteidbyuseridEndpoint = grpctransport.NewClient(
+			conn,
+			"pb.Sitemgr",
+			"GetSiteIDByUserID",
+			encodeGRPCGetSiteIDByUserIDRequest,
+			decodeGRPCGetSiteIDByUserIDResponse,
+			pb.GetSiteIDByUserIDReply{},
+			options...,
 		).Endpoint()
 	}
 	// Returning the endpoint.Set as a service.Service relies on the
@@ -85,6 +116,7 @@ func NewGRPCClient(conn *grpc.ClientConn, logger log.Logger) service.Service {
 		NewSiteEndpoint:             newsiteEndpoint,
 		DeleteSiteEndpoint:          deletesiteEndpoint,
 		CheckSitenameExistsEndpoint: checksitenameexistsEndpoint,
+		GetSiteIDByUserIDEndpoint:   getsiteidbyuseridEndpoint,
 	}
 }
 
@@ -112,16 +144,23 @@ func (s *grpcServer) CheckSitenameExists(ctx context.Context, req *pb.CheckSiten
 	return rep.(*pb.CheckSitenameExistsReply), nil
 }
 
+func (s *grpcServer) GetSiteIDByUserID(ctx context.Context, req *pb.GetSiteIDByUserIDRequest) (*pb.GetSiteIDByUserIDReply, error) {
+	_, rep, err := s.getsiteidbyuserid.ServeGRPC(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return rep.(*pb.GetSiteIDByUserIDReply), nil
+}
+
 // NewSite
 func encodeGRPCNewSiteRequest(_ context.Context, request interface{}) (interface{}, error) {
 	req := request.(endpoint.NewSiteRequest)
-	return &pb.CreateNewSiteRequest{UserId: uint64(req.UserId), Sitename: req.SiteName}, nil
+	return &pb.CreateNewSiteRequest{Sitename: req.SiteName}, nil
 }
 
 func decodeGRPCNewSiteRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
 	req := grpcReq.(*pb.CreateNewSiteRequest)
 	return endpoint.NewSiteRequest{
-		UserId:   uint(req.UserId),
 		SiteName: req.Sitename,
 	}, nil
 }
@@ -129,26 +168,26 @@ func decodeGRPCNewSiteRequest(_ context.Context, grpcReq interface{}) (interface
 func encodeGRPCNewSiteResponse(_ context.Context, response interface{}) (interface{}, error) {
 	resp := response.(endpoint.NewSiteResponse)
 	return &pb.CreateNewSiteReply{
-		SiteId: uint64(resp.SiteId),
+		SiteId: uint64(resp.SiteID),
 		Err:    err2str(resp.Err),
 	}, nil
 }
 
 func decodeGRPCNewSiteResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
 	reply := grpcReply.(*pb.CreateNewSiteReply)
-	return endpoint.NewSiteResponse{SiteId: uint(reply.SiteId), Err: str2err(reply.Err)}, nil
+	return endpoint.NewSiteResponse{SiteID: uint(reply.SiteId), Err: str2err(reply.Err)}, nil
 }
 
 // DeleteSite
 func encodeGRPCDeleteSiteRequest(_ context.Context, request interface{}) (interface{}, error) {
 	req := request.(endpoint.DeleteSiteRequest)
-	return &pb.ProxyDeleteSiteRequest{SiteId: uint64(req.SiteId)}, nil
+	return &pb.ProxyDeleteSiteRequest{SiteId: uint64(req.SiteID)}, nil
 }
 
 func decodeGRPCDeleteSiteRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
 	req := grpcReq.(*pb.ProxyDeleteSiteRequest)
 	return endpoint.DeleteSiteRequest{
-		SiteId: uint(req.SiteId),
+		SiteID: uint(req.SiteId),
 	}, nil
 }
 
@@ -188,6 +227,28 @@ func encodeGRPCCheckSitenameExistsResponse(_ context.Context, response interface
 func decodeGRPCCheckSitenameExistsResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
 	reply := grpcReply.(*pb.CheckSitenameExistsReply)
 	return endpoint.CheckSitenameExistsResponse{Exists: reply.Exists, Err: str2err(reply.Err)}, nil
+}
+
+// GetSiteIDByUserID
+func encodeGRPCGetSiteIDByUserIDRequest(_ context.Context, request interface{}) (interface{}, error) {
+	return &pb.GetSiteIDByUserIDRequest{}, nil
+}
+
+func decodeGRPCGetSiteIDByUserIDRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
+	return endpoint.GetSiteIDByUserIDRequest{}, nil
+}
+
+func encodeGRPCGetSiteIDByUserIDResponse(_ context.Context, response interface{}) (interface{}, error) {
+	resp := response.(endpoint.GetSiteIDByUserIDResponse)
+	return &pb.GetSiteIDByUserIDReply{
+		SiteId: uint64(resp.SiteID),
+		Err:    err2str(resp.Err),
+	}, nil
+}
+
+func decodeGRPCGetSiteIDByUserIDResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
+	reply := grpcReply.(*pb.GetSiteIDByUserIDReply)
+	return endpoint.GetSiteIDByUserIDResponse{SiteID: uint(reply.SiteId), Err: str2err(reply.Err)}, nil
 }
 
 func err2str(err error) string {

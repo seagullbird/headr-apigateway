@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/log"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
@@ -22,10 +23,13 @@ var (
 	ErrBadRouting = errors.New("inconsistent mapping between route and handler (programmer error)")
 )
 
+// NewHTTPHandler returns an HTTP handler that makes a set of endpoints
+// available on predefined paths.
 func NewHTTPHandler(endpoints endpoint.Set, logger log.Logger) http.Handler {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
 		httptransport.ServerErrorLogger(logger),
+		httptransport.ServerBefore(jwt.HTTPToContext()),
 	}
 
 	r := mux.NewRouter()
@@ -33,6 +37,7 @@ func NewHTTPHandler(endpoints endpoint.Set, logger log.Logger) http.Handler {
 	// POST 	/sites/							add a site
 	// DELETE	/sites/:id						remove the given site
 	// POST     /is-sitename-exists 			check if sitename already exists
+	// GET		/site-id						get a user's site's id for the given user id
 
 	r.Methods("POST").Path("/sites/").Handler(httptransport.NewServer(
 		endpoints.NewSiteEndpoint,
@@ -52,14 +57,23 @@ func NewHTTPHandler(endpoints endpoint.Set, logger log.Logger) http.Handler {
 		encodeHTTPGenericResponse,
 		options...,
 	))
+	r.Methods("GET").Path("/site-id/").Handler(httptransport.NewServer(
+		endpoints.GetSiteIDByUserIDEndpoint,
+		decodeHTTPGetSiteIDByUserIDRequest,
+		encodeHTTPGenericResponse,
+		options...,
+	))
 	return r
 }
 
 func err2code(err error) int {
-	if err != nil {
-		return http.StatusInternalServerError
+	switch err {
+	case jwt.ErrTokenContextMissing, jwt.ErrTokenExpired, jwt.ErrTokenInvalid, jwt.ErrTokenMalformed, jwt.ErrTokenNotActive, jwt.ErrUnexpectedSigningMethod:
+		return http.StatusForbidden
+	case ErrBadRouting:
+		return http.StatusBadRequest
 	}
-	return http.StatusOK
+	return http.StatusInternalServerError
 }
 
 func errorEncoder(_ context.Context, err error, w http.ResponseWriter) {
@@ -93,7 +107,12 @@ func decodeHTTPDeleteSiteRequest(_ context.Context, r *http.Request) (interface{
 	if err != nil {
 		return nil, ErrBadRouting
 	}
-	return endpoint.DeleteSiteRequest{SiteId: uint(i)}, nil
+	return endpoint.DeleteSiteRequest{SiteID: uint(i)}, nil
+}
+
+func decodeHTTPGetSiteIDByUserIDRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	// UserID will not be set here but extracted from access_token after access_token is verified in endpoint.AuthMiddleware
+	return endpoint.GetSiteIDByUserIDRequest{}, nil
 }
 
 func decodeHTTPCheckSitenameExistsRequest(_ context.Context, r *http.Request) (interface{}, error) {

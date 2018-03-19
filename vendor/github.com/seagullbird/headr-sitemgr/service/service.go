@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	stdjwt "github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/seagullbird/headr-common/mq"
 	"github.com/seagullbird/headr-common/mq/dispatch"
@@ -11,16 +13,19 @@ import (
 	"time"
 )
 
+// Service describes a service that deals with site management operations (sitemgr).
 type Service interface {
-	NewSite(ctx context.Context, userID uint, sitename string) (uint, error)
+	NewSite(ctx context.Context, sitename string) (uint, error)
 	DeleteSite(ctx context.Context, siteID uint) error
 	CheckSitenameExists(ctx context.Context, sitename string) (bool, error)
+	GetSiteIDByUserID(ctx context.Context) (uint, error)
 }
 
+// New returns a basic Service with all of the expected middlewares wired in.
 func New(repoctlsvc repoctlservice.Service, logger log.Logger, dispatcher dispatch.Dispatcher, store db.Store) Service {
 	var svc Service
 	{
-		svc = NewBasicService(repoctlsvc, dispatcher, store)
+		svc = newBasicService(repoctlsvc, dispatcher, store)
 		svc = LoggingMiddleware(logger)(svc)
 	}
 	return svc
@@ -32,7 +37,7 @@ type basicService struct {
 	store      db.Store
 }
 
-func NewBasicService(repoctlsvc repoctlservice.Service, dispatcher dispatch.Dispatcher, store db.Store) basicService {
+func newBasicService(repoctlsvc repoctlservice.Service, dispatcher dispatch.Dispatcher, store db.Store) basicService {
 	return basicService{
 		repoctlsvc: repoctlsvc,
 		dispatcher: dispatcher,
@@ -40,10 +45,10 @@ func NewBasicService(repoctlsvc repoctlservice.Service, dispatcher dispatch.Disp
 	}
 }
 
-// TODO: After creating new site, sitemgr should be responsible for updating siteID to user's app_metadata through Auth0's Management API
-func (s basicService) NewSite(ctx context.Context, userID uint, sitename string) (uint, error) {
+func (s basicService) NewSite(ctx context.Context, sitename string) (uint, error) {
+	userID := ctx.Value(jwt.JWTClaimsContextKey).(stdjwt.MapClaims)["sub"].(string)
 	site := &db.Site{
-		UserId:   userID,
+		UserID:   userID,
 		Theme:    config.InitialTheme,
 		Sitename: sitename,
 	}
@@ -64,10 +69,15 @@ func (s basicService) NewSite(ctx context.Context, userID uint, sitename string)
 }
 
 func (s basicService) DeleteSite(ctx context.Context, siteID uint) error {
+	// delete database item
+	site, _ := s.store.GetSite(siteID)
+	s.store.DeleteSite(site)
+	// delete static files
 	err := s.repoctlsvc.DeleteSite(ctx, siteID)
 	if err != nil {
 		return err
 	}
+	// delete server service
 	var delsiteEvent = mq.SiteUpdatedEvent{
 		SiteId:     siteID,
 		ReceivedOn: time.Now().Unix(),
@@ -77,4 +87,32 @@ func (s basicService) DeleteSite(ctx context.Context, siteID uint) error {
 
 func (s basicService) CheckSitenameExists(ctx context.Context, sitename string) (bool, error) {
 	return s.store.CheckSitenameExists(sitename)
+}
+
+func (s basicService) GetSiteIDByUserID(ctx context.Context) (uint, error) {
+	userID := ctx.Value(jwt.JWTClaimsContextKey).(stdjwt.MapClaims)["sub"]
+	return s.store.GetSiteIDByUserID(userID.(string))
+}
+
+// EmptyService is only used for transport tests
+type EmptyService struct{}
+
+// NewSite implements Service.NewSite
+func (e EmptyService) NewSite(ctx context.Context, sitename string) (uint, error) {
+	return 0, nil
+}
+
+// DeleteSite implements Service.DeleteSite
+func (e EmptyService) DeleteSite(ctx context.Context, siteID uint) error {
+	return nil
+}
+
+// CheckSitenameExists implements Service.CheckSitenameExists
+func (e EmptyService) CheckSitenameExists(ctx context.Context, sitename string) (bool, error) {
+	return true, nil
+}
+
+// GetSiteIDByUserID implements Service.GetSiteIDByUserID
+func (e EmptyService) GetSiteIDByUserID(ctx context.Context) (uint, error) {
+	return 0, nil
 }

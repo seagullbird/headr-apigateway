@@ -8,7 +8,8 @@ import (
 // Middleware describes a service (as opposed to endpoint) middleware.
 type Middleware func(Service) Service
 
-// Logging Middleware
+// LoggingMiddleware takes a logger as a dependency
+// and returns a ServiceMiddleware.
 func LoggingMiddleware(logger log.Logger) Middleware {
 	return func(next Service) Service {
 		return loggingMiddleware{
@@ -23,9 +24,9 @@ type loggingMiddleware struct {
 	next   Service
 }
 
-func (mw loggingMiddleware) NewSite(ctx context.Context, userID uint, sitename string) (id uint, err error) {
-	id, err = mw.next.NewSite(ctx, userID, sitename)
-	mw.logger.Log("method", "NewSite", "userID", userID, "sitename", sitename, "siteID", id, "err", err)
+func (mw loggingMiddleware) NewSite(ctx context.Context, sitename string) (id uint, err error) {
+	id, err = mw.next.NewSite(ctx, sitename)
+	mw.logger.Log("method", "NewSite", "sitename", sitename, "siteID", id, "err", err)
 	return
 }
 
@@ -39,4 +40,10 @@ func (mw loggingMiddleware) CheckSitenameExists(ctx context.Context, sitename st
 	exists, err := mw.next.CheckSitenameExists(ctx, sitename)
 	mw.logger.Log("method", "CheckSitenameExists", "sitename", sitename, "err", err)
 	return exists, err
+}
+
+func (mw loggingMiddleware) GetSiteIDByUserID(ctx context.Context) (uint, error) {
+	siteID, err := mw.next.GetSiteIDByUserID(ctx)
+	mw.logger.Log("method", "CheckSitenameExists", "siteID", siteID, "err", err)
+	return siteID, err
 }
