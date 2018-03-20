@@ -83,13 +83,13 @@
   branch = "master"
   name = "github.com/seagullbird/headr-contentmgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "bce85fa30fc038405d2d135a662dfd06e63f3be1"
+  revision = "0f71e1b845d12c18bd43fb398b51b783d34bed76"
 
 [[projects]]
   branch = "master"
   name = "github.com/seagullbird/headr-repoctl"
   packages = ["config","service"]
-  revision = "1f5a046dffdea3c24fe485e22680967eab09974e"
+  revision = "a1b294beeffddca1d8f593cef554afc6541effff"
 
 [[projects]]
   branch = "master"
