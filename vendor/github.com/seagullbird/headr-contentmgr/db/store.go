@@ -1,27 +1,26 @@
 package db
 
 import (
-	"github.com/go-kit/kit/log"
 	"github.com/jinzhu/gorm"
+	// used for database connection
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
+// Store deals with database operations with table Post.
 type Store interface {
 	InsertPost(post *Post) (id uint, err error)
 	DeletePost(post *Post) error
 	GetPost(id uint) (*Post, error)
 	PatchPost(post *Post) error
+	GetAllPosts(userID string) ([]uint, error)
 }
 
 type databaseStore struct {
 	db *gorm.DB
 }
 
-func New(logger log.Logger) Store {
-	db, err := gorm.Open("postgres", "host=postgresql-postgresql port=5432 user=postgres dbname=postgres password=qBDXNlz276 sslmode=disable")
-	if err != nil {
-		logger.Log("error_desc", "Failed to connected to PostgreSQL", "error", err)
-	}
+// New creates a databaseStore instance
+func New(db *gorm.DB) Store {
 	db.AutoMigrate(&Post{})
 	return &databaseStore{
 		db: db,
@@ -29,21 +28,30 @@ func New(logger log.Logger) Store {
 }
 
 func (s *databaseStore) InsertPost(post *Post) (id uint, err error) {
-	s.db.Create(post)
-	return post.Model.ID, nil
+	err = s.db.Create(post).Error
+	return post.Model.ID, err
 }
 
 func (s *databaseStore) DeletePost(post *Post) error {
-	s.db.Delete(&post)
-	return nil
+	return s.db.Delete(&post).Error
 }
 
 func (s *databaseStore) GetPost(id uint) (*Post, error) {
 	var post Post
-	s.db.First(&post, id)
-	return &post, nil
+	err := s.db.First(&post, id).Error
+	return &post, err
 }
 
 func (s *databaseStore) PatchPost(post *Post) error {
 	return nil
+}
+
+func (s *databaseStore) GetAllPosts(userID string) ([]uint, error) {
+	var posts []Post
+	err := s.db.Where("user_id = ?", userID).Find(&posts).Error
+	var ids = make([]uint, len(posts))
+	for i, v := range posts {
+		ids[i] = v.Model.ID
+	}
+	return ids, err
 }
