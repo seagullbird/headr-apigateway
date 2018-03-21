@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/seagullbird/headr-contentmgr/db"
 	repoctlservice "github.com/seagullbird/headr-repoctl/service"
+	"strings"
 )
 
 // Service describes a service that deals with content management operations (contentmgr).
@@ -15,6 +16,7 @@ type Service interface {
 	NewPost(ctx context.Context, post db.Post) (uint, error)
 	DeletePost(ctx context.Context, id uint) error
 	GetPost(ctx context.Context, id uint) (*db.Post, error)
+	PatchPost(ctx context.Context, post db.Post) error
 	GetAllPosts(ctx context.Context) ([]uint, error)
 }
 
@@ -85,10 +87,11 @@ func (s basicService) GetPost(ctx context.Context, id uint) (*db.Post, error) {
 	if postptr.UserID != userID {
 		return nil, ErrPostNotFound
 	}
-	content, err := s.repoctlsvc.ReadPost(ctx, postptr.SiteID, postptr.Filename+"."+postptr.Filetype)
+	wholeContent, err := s.repoctlsvc.ReadPost(ctx, postptr.SiteID, postptr.Filename+"."+postptr.Filetype)
 	if err != nil {
 		return nil, err
 	}
+	content := strings.Split(wholeContent, "<!--more-->")[1]
 	postptr.Content = content
 	return postptr, nil
 }
@@ -96,6 +99,28 @@ func (s basicService) GetPost(ctx context.Context, id uint) (*db.Post, error) {
 func (s basicService) GetAllPosts(ctx context.Context) ([]uint, error) {
 	userID := ctx.Value(jwt.JWTClaimsContextKey).(stdjwt.MapClaims)["sub"].(string)
 	return s.store.GetAllPosts(userID)
+}
+
+func (s basicService) PatchPost(ctx context.Context, post db.Post) error {
+	existingPost, err := s.store.GetPost(post.ID)
+	if err != nil {
+		return err
+	}
+	userID := ctx.Value(jwt.JWTClaimsContextKey).(stdjwt.MapClaims)["sub"].(string)
+	if existingPost == nil || existingPost.UserID != userID {
+		return ErrPostNotFound
+	}
+	// TODO: Add Validation for post
+	currentPost, err := s.store.PatchPost(existingPost, &post)
+	if err != nil {
+		return err
+	}
+	if post.Content != "" {
+		currentPost.Content = post.Content
+	}
+	filename := post.Filename + "." + post.Filetype
+	filecontent := post.String()
+	return s.repoctlsvc.WritePost(ctx, post.SiteID, filename, filecontent)
 }
 
 // EmptyService is only used for transport tests
@@ -119,4 +144,9 @@ func (e EmptyService) GetPost(ctx context.Context, id uint) (*db.Post, error) {
 // GetAllPosts implements Service.GetAllPosts
 func (e EmptyService) GetAllPosts(ctx context.Context) ([]uint, error) {
 	return nil, nil
+}
+
+// PatchPost implements Service.PatchPost
+func (e EmptyService) PatchPost(ctx context.Context, post db.Post) error {
+	return nil
 }
