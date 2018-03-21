@@ -1,6 +1,6 @@
 GOARCH?=amd64
 GOOS?=linux
-APP?=apigateway
+APP?=./build/apigateway
 PROJECT?=github.com/seagullbird/headr-apigateway
 COMMIT?=$(shell git rev-parse --short HEAD)
 PORT?=8689
@@ -15,7 +15,7 @@ build: clean
 	-o ${APP}
 
 container: build
-	docker build -t apigateway:${COMMIT} .
+	docker build -t apigateway:${COMMIT} ./build/
 
 minikube: container
 	cat k8s/k8s.yaml | \
