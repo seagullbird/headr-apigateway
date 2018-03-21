@@ -83,7 +83,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-contentmgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "b12091f66fe5abe545b455adddd6e3feb64412bc"
+  revision = "6c1e0579be2bf0a9479f57130e67891962a03ab7"
 
 [[projects]]
   branch = "master"
