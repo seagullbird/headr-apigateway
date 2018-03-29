@@ -38,6 +38,8 @@ func NewHTTPHandler(endpoints endpoint.Set, logger log.Logger) http.Handler {
 	// DELETE	/sites/:id						remove the given site
 	// POST     /is-sitename-exists 			check if sitename already exists
 	// GET		/site-id						get a user's site's id for the given user id
+	// GET		/sites/config/:id				get a site's config by site id
+	// PUT		/sites/config/:id				update a site's config
 
 	r.Methods("POST").Path("/sites/").Handler(httptransport.NewServer(
 		endpoints.NewSiteEndpoint,
@@ -60,6 +62,18 @@ func NewHTTPHandler(endpoints endpoint.Set, logger log.Logger) http.Handler {
 	r.Methods("GET").Path("/site-id/").Handler(httptransport.NewServer(
 		endpoints.GetSiteIDByUserIDEndpoint,
 		decodeHTTPGetSiteIDByUserIDRequest,
+		encodeHTTPGenericResponse,
+		options...,
+	))
+	r.Methods("GET").Path("/sites/config/{id}").Handler(httptransport.NewServer(
+		endpoints.GetConfigEndpoint,
+		decodeHTTPGetConfigRequest,
+		encodeHTTPGenericResponse,
+		options...,
+	))
+	r.Methods("PUT").Path("/sites/config/{id}").Handler(httptransport.NewServer(
+		endpoints.UpdateConfigEndpoint,
+		decodeHTTPUpdateConfigRequest,
 		encodeHTTPGenericResponse,
 		options...,
 	))
@@ -113,6 +127,39 @@ func decodeHTTPDeleteSiteRequest(_ context.Context, r *http.Request) (interface{
 func decodeHTTPGetSiteIDByUserIDRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	// UserID will not be set here but extracted from access_token after access_token is verified in endpoint.AuthMiddleware
 	return endpoint.GetSiteIDByUserIDRequest{}, nil
+}
+
+func decodeHTTPGetConfigRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		return nil, ErrBadRouting
+	}
+	i, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, ErrBadRouting
+	}
+	return endpoint.GetConfigRequest{SiteID: uint(i)}, nil
+}
+
+func decodeHTTPUpdateConfigRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		return nil, ErrBadRouting
+	}
+	i, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, ErrBadRouting
+	}
+	var payload struct {
+		Config string `json:"config"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		return nil, ErrBadRouting
+	}
+	return endpoint.UpdateConfigRequest{SiteID: uint(i), Config: payload.Config}, nil
 }
 
 func decodeHTTPCheckSitenameExistsRequest(_ context.Context, r *http.Request) (interface{}, error) {

@@ -24,8 +24,8 @@ type loggingMiddleware struct {
 	next   Service
 }
 
-func (mw loggingMiddleware) NewSite(ctx context.Context, siteID uint) (err error) {
-	err = mw.next.NewSite(ctx, siteID)
+func (mw loggingMiddleware) NewSite(ctx context.Context, siteID uint, theme string) (err error) {
+	err = mw.next.NewSite(ctx, siteID, theme)
 	mw.logger.Log("method", "NewSite", "siteID", siteID, "err", err)
 	return
 }
@@ -44,7 +44,7 @@ func (mw loggingMiddleware) WritePost(ctx context.Context, siteID uint, filename
 
 func (mw loggingMiddleware) RemovePost(ctx context.Context, siteID uint, filename string) (err error) {
 	err = mw.next.RemovePost(ctx, siteID, filename)
-	mw.logger.Log("method", "DeletePost", "siteID", siteID, "filename", filename, "err", err)
+	mw.logger.Log("method", "RemovePost", "siteID", siteID, "filename", filename, "err", err)
 	return
 }
 
@@ -52,4 +52,16 @@ func (mw loggingMiddleware) ReadPost(ctx context.Context, siteID uint, filename 
 	content, err = mw.next.ReadPost(ctx, siteID, filename)
 	mw.logger.Log("method", "ReadPost", "siteID", siteID, "filename", filename, "err", err)
 	return
+}
+
+func (mw loggingMiddleware) WriteConfig(ctx context.Context, siteID uint, config string) error {
+	err := mw.next.WriteConfig(ctx, siteID, config)
+	mw.logger.Log("method", "WriteConfig", "siteID", siteID)
+	return err
+}
+
+func (mw loggingMiddleware) ReadConfig(ctx context.Context, siteID uint) (string, error) {
+	config, err := mw.next.ReadConfig(ctx, siteID)
+	mw.logger.Log("method", "ReadConfig", "siteID", siteID)
+	return config, err
 }

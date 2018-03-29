@@ -3,6 +3,7 @@ package endpoint
 // NewSiteRequest collects the request parameters for the NewSite method.
 type NewSiteRequest struct {
 	SiteID uint
+	Theme  string
 }
 
 // NewSiteResponse collects the response values for the NewSite method.
@@ -53,4 +54,26 @@ type ReadPostRequest struct {
 type ReadPostResponse struct {
 	Content string `json:"content"`
 	Err     error  `json:"-"`
+}
+
+// WriteConfigRequest collects the request parameters for the WriteConfig method.
+type WriteConfigRequest struct {
+	SiteID uint
+	Config string
+}
+
+// WriteConfigResponse collects the response values for the WriteConfig method.
+type WriteConfigResponse struct {
+	Err error `json:"-"`
+}
+
+// ReadConfigRequest collects the request parameters for the ReadConfig method.
+type ReadConfigRequest struct {
+	SiteID uint
+}
+
+// ReadConfigResponse collects the response values for the ReadConfig method.
+type ReadConfigResponse struct {
+	Config string `json:"config"`
+	Err    error  `json:"-"`
 }

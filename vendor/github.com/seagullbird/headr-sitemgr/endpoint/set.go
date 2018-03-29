@@ -15,6 +15,8 @@ type Set struct {
 	DeleteSiteEndpoint          endpoint.Endpoint
 	CheckSitenameExistsEndpoint endpoint.Endpoint
 	GetSiteIDByUserIDEndpoint   endpoint.Endpoint
+	GetConfigEndpoint           endpoint.Endpoint
+	UpdateConfigEndpoint        endpoint.Endpoint
 }
 
 // New returns a Set that wraps the provided server.
@@ -24,6 +26,8 @@ func New(svc service.Service, logger log.Logger) Set {
 		DeleteSiteEndpoint:          Middlewares(MakeDeleteSiteEndpoint(svc), logger),
 		CheckSitenameExistsEndpoint: Middlewares(MakeCheckSitenameExistsEndpoint(svc), logger),
 		GetSiteIDByUserIDEndpoint:   Middlewares(MakeGetSiteIDByUserIDEndpoint(svc), logger),
+		GetConfigEndpoint:           Middlewares(MakeGetConfigEndpoint(svc), logger),
+		UpdateConfigEndpoint:        Middlewares(MakeUpdateConfigEndpoint(svc), logger),
 	}
 }
 
@@ -71,12 +75,34 @@ func (s Set) GetSiteIDByUserID(ctx context.Context) (uint, error) {
 	return response.SiteID, response.Err
 }
 
+// GetConfig implements the service interface, so Set may be used as a service.
+// This is primarily useful in the context of a client library.
+func (s Set) GetConfig(ctx context.Context, siteID uint) (string, error) {
+	resp, err := s.GetConfigEndpoint(ctx, GetConfigRequest{SiteID: siteID})
+	if err != nil {
+		return "", err
+	}
+	response := resp.(GetConfigResponse)
+	return response.Config, response.Err
+}
+
+// UpdateConfig implements the service interface, so Set may be used as a service.
+// This is primarily useful in the context of a client library.
+func (s Set) UpdateConfig(ctx context.Context, siteID uint, config string) error {
+	resp, err := s.UpdateConfigEndpoint(ctx, UpdateConfigRequest{SiteID: siteID, Config: config})
+	if err != nil {
+		return err
+	}
+	response := resp.(UpdateConfigResponse)
+	return response.Err
+}
+
 // MakeNewSiteEndpoint constructs a NewSite endpoint wrapping the service.
 func MakeNewSiteEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(NewSiteRequest)
 		id, err := svc.NewSite(ctx, req.SiteName)
-		return NewSiteResponse{SiteID: id, Err: err}, err
+		return NewSiteResponse{SiteID: id, Err: err}, nil
 	}
 }
 
@@ -85,7 +111,7 @@ func MakeDeleteSiteEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(DeleteSiteRequest)
 		err = svc.DeleteSite(ctx, req.SiteID)
-		return DeleteSiteResponse{Err: err}, err
+		return DeleteSiteResponse{Err: err}, nil
 	}
 }
 
@@ -94,7 +120,7 @@ func MakeCheckSitenameExistsEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(CheckSitenameExistsRequest)
 		exists, err := svc.CheckSitenameExists(ctx, req.Sitename)
-		return CheckSitenameExistsResponse{Exists: exists, Err: err}, err
+		return CheckSitenameExistsResponse{Exists: exists, Err: err}, nil
 	}
 }
 
@@ -102,7 +128,25 @@ func MakeCheckSitenameExistsEndpoint(svc service.Service) endpoint.Endpoint {
 func MakeGetSiteIDByUserIDEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		siteID, err := svc.GetSiteIDByUserID(ctx)
-		return GetSiteIDByUserIDResponse{SiteID: siteID, Err: err}, err
+		return GetSiteIDByUserIDResponse{SiteID: siteID, Err: err}, nil
+	}
+}
+
+// MakeGetConfigEndpoint constructs a GetConfig endpoint wrapping the service.
+func MakeGetConfigEndpoint(svc service.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(GetConfigRequest)
+		config, err := svc.GetConfig(ctx, req.SiteID)
+		return GetConfigResponse{Config: config, Err: err}, nil
+	}
+}
+
+// MakeUpdateConfigEndpoint constructs a UpdateConfig endpoint wrapping the service.
+func MakeUpdateConfigEndpoint(svc service.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(UpdateConfigRequest)
+		err = svc.UpdateConfig(ctx, req.SiteID, req.Config)
+		return UpdateConfigResponse{Err: err}, nil
 	}
 }
 
@@ -124,3 +168,9 @@ func (r CheckSitenameExistsResponse) Failed() error { return r.Err }
 
 // Failed implements Failer.
 func (r GetSiteIDByUserIDResponse) Failed() error { return r.Err }
+
+// Failed implements Failer.
+func (r GetConfigResponse) Failed() error { return r.Err }
+
+// Failed implements Failer.
+func (r UpdateConfigResponse) Failed() error { return r.Err }

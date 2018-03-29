@@ -1,5 +1,7 @@
 package service
 
+//go:generate mockgen -destination=./mock/mock_service.go -package=mock github.com/seagullbird/headr-sitemgr/service Service
+
 import (
 	"context"
 	stdjwt "github.com/dgrijalva/jwt-go"
@@ -19,6 +21,8 @@ type Service interface {
 	DeleteSite(ctx context.Context, siteID uint) error
 	CheckSitenameExists(ctx context.Context, sitename string) (bool, error)
 	GetSiteIDByUserID(ctx context.Context) (uint, error)
+	GetConfig(ctx context.Context, siteID uint) (string, error)
+	UpdateConfig(ctx context.Context, siteID uint, config string) error
 }
 
 // New returns a basic Service with all of the expected middlewares wired in.
@@ -56,7 +60,7 @@ func (s basicService) NewSite(ctx context.Context, sitename string) (uint, error
 	if err != nil {
 		return 0, err
 	}
-	err = s.repoctlsvc.NewSite(ctx, siteID)
+	err = s.repoctlsvc.NewSite(ctx, siteID, site.Theme)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +75,9 @@ func (s basicService) NewSite(ctx context.Context, sitename string) (uint, error
 func (s basicService) DeleteSite(ctx context.Context, siteID uint) error {
 	// delete database item
 	site, _ := s.store.GetSite(siteID)
-	s.store.DeleteSite(site)
+	if err := s.store.DeleteSite(site); err != nil {
+		return err
+	}
 	// delete static files
 	err := s.repoctlsvc.DeleteSite(ctx, siteID)
 	if err != nil {
@@ -94,25 +100,10 @@ func (s basicService) GetSiteIDByUserID(ctx context.Context) (uint, error) {
 	return s.store.GetSiteIDByUserID(userID.(string))
 }
 
-// EmptyService is only used for transport tests
-type EmptyService struct{}
-
-// NewSite implements Service.NewSite
-func (e EmptyService) NewSite(ctx context.Context, sitename string) (uint, error) {
-	return 0, nil
+func (s basicService) GetConfig(ctx context.Context, siteID uint) (string, error) {
+	return s.repoctlsvc.ReadConfig(ctx, siteID)
 }
 
-// DeleteSite implements Service.DeleteSite
-func (e EmptyService) DeleteSite(ctx context.Context, siteID uint) error {
-	return nil
-}
-
-// CheckSitenameExists implements Service.CheckSitenameExists
-func (e EmptyService) CheckSitenameExists(ctx context.Context, sitename string) (bool, error) {
-	return true, nil
-}
-
-// GetSiteIDByUserID implements Service.GetSiteIDByUserID
-func (e EmptyService) GetSiteIDByUserID(ctx context.Context) (uint, error) {
-	return 0, nil
+func (s basicService) UpdateConfig(ctx context.Context, siteID uint, config string) error {
+	return s.repoctlsvc.WriteConfig(ctx, siteID, config)
 }
