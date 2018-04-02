@@ -89,7 +89,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-contentmgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "fed83dd7f94d1365999bc4512fb469169daee302"
+  revision = "8dab006bf42a0df95084a663151825c3ad573a64"
 
 [[projects]]
   branch = "master"
@@ -101,7 +101,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-sitemgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "898967d02f82e004b65317dad08bae6e8d13894d"
+  revision = "bfc54c62f830ccc77a9f3e24798c64c8f47bf66e"
 
 [[projects]]
   branch = "master"
