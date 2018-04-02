@@ -44,6 +44,12 @@
   version = "v1.1"
 
 [[projects]]
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  revision = "90663712d74cb411cbef281bc1e08c19d1a76145"
+  version = "v1.3.0"
+
+[[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
   revision = "53c1911da2b537f792e7cafcb446b05ffe33b996"
@@ -83,7 +89,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-contentmgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "8dab006bf42a0df95084a663151825c3ad573a64"
+  revision = "fed83dd7f94d1365999bc4512fb469169daee302"
 
 [[projects]]
   branch = "master"
@@ -95,7 +101,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-sitemgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "331cc61e05daf58f5556313684d9a81faa1eab1a"
+  revision = "898967d02f82e004b65317dad08bae6e8d13894d"
 
 [[projects]]
   branch = "master"
@@ -130,6 +136,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d58e5b9db7a72e2abd107e2ef4348d1cb450eb283e1a8bf7e4309b5bdcc05810"
+  inputs-digest = "acd6d3708c685e10b11ee6fe811f17c619d416e98c0f1cb6121aa3ccf6f65ffc"
   solver-name = "gps-cdcl"
   solver-version = 1
