@@ -15,6 +15,7 @@ import (
 
 // Service describes a service that deals with content management operations (contentmgr).
 type Service interface {
+	// TODO: Add DeleteAllPosts service for sitemgr, do not need to be exposed by http. Just grpc
 	NewPost(ctx context.Context, post db.Post) (uint, error)
 	DeletePost(ctx context.Context, id uint) error
 	GetPost(ctx context.Context, id uint) (db.Post, error)
@@ -72,11 +73,11 @@ func (s basicService) DeletePost(ctx context.Context, id uint) error {
 	if postptr.UserID != userID {
 		return ErrPostNotFound
 	}
-	err = s.repoctlsvc.RemovePost(ctx, postptr.SiteID, postptr.Filename+"."+postptr.Filetype)
+	err = s.store.DeletePost(postptr)
 	if err != nil {
 		return err
 	}
-	return s.store.DeletePost(postptr)
+	return s.repoctlsvc.RemovePost(ctx, postptr.SiteID, postptr.Filename+"."+postptr.Filetype)
 }
 
 func (s basicService) GetPost(ctx context.Context, id uint) (db.Post, error) {
