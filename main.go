@@ -72,6 +72,11 @@ func main() {
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
+	// home page
+	r.Methods("GET").Path("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Welcome to the Headr kubernetes cluster!"))
+	}))
 
 	// Interrupt handler.
 	errc := make(chan error)

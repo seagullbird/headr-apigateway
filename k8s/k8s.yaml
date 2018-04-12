@@ -18,6 +18,14 @@ spec:
       - name: apigateway
         image: apigateway:{{ .Commit }}
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: ${PORT}
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: ${PORT}
 ---
 apiVersion: v1
 kind: Service
