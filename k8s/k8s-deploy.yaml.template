@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
       - name: apigateway
-        image: apigateway:{{ .Commit }}
-        imagePullPolicy: IfNotPresent
+        image: ${GCR_TAG}:${WERCKER_GIT_COMMIT}
+        imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -30,4 +30,4 @@ spec:
   ports:
   - protocol: TCP
     port: 2018
-    targetPort: {{ .Port }}
+    targetPort: ${PORT}
