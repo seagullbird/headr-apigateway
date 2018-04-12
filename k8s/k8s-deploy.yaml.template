@@ -18,6 +18,14 @@ spec:
       - name: apigateway
         image: ${GCR_TAG}:${WERCKER_GIT_COMMIT}
         imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: ${PORT}
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: ${PORT}
 ---
 apiVersion: v1
 kind: Service

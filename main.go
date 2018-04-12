@@ -17,12 +17,13 @@ import (
 	"syscall"
 )
 
-func initGRPCConnection(svcname string, logger log.Logger) *grpc.ClientConn {
+func initGRPCConnection(svcname string, logger log.Logger) (*grpc.ClientConn, error) {
 	conn, err := grpc.Dial(fmt.Sprintf("%s:2018", svcname), grpc.WithInsecure())
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error connecting %s", svcname), err.Error())
+		return nil, err
 	}
-	return conn
+	return conn, nil
 }
 
 func main() {
@@ -36,10 +37,13 @@ func main() {
 
 	// Transport
 	r := mux.NewRouter()
-
+	isReady := true
 	// Sitemgr
 	{
-		sitemgrconn := initGRPCConnection("sitemgr", logger)
+		sitemgrconn, sitemgrerr := initGRPCConnection("sitemgr", logger)
+		if sitemgrerr != nil {
+			isReady = false
+		}
 		service := sitemgrtransport.NewGRPCClient(sitemgrconn, logger)
 		endpoints := sitemgrendpoint.New(service, logger)
 		r.PathPrefix("/sitemgr").Handler(http.StripPrefix("/sitemgr", sitemgrtransport.NewHTTPHandler(endpoints, logger)))
@@ -47,11 +51,27 @@ func main() {
 
 	// Contentmgr
 	{
-		contentmgrconn := initGRPCConnection("contentmgr", logger)
+		contentmgrconn, contentmgrerr := initGRPCConnection("contentmgr", logger)
+		if contentmgrerr != nil {
+			isReady = false
+		}
 		service := contentmgrtransport.NewGRPCClient(contentmgrconn, logger)
 		endpoints := contentmgrendpoint.New(service, logger)
 		r.PathPrefix("/contentmgr").Handler(http.StripPrefix("/contentmgr", contentmgrtransport.NewHTTPHandler(endpoints, logger)))
 	}
+
+	// liveness probe
+	r.Methods("GET").Path("/healthz").Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	// readiness probe
+	r.Methods("GET").Path("/readyz").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isReady {
+			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	// Interrupt handler.
 	errc := make(chan error)
