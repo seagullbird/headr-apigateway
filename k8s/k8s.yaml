@@ -21,11 +21,11 @@ spec:
         livenessProbe:
           httpGet:
             path: /healthz
-            port: ${PORT}
+            port: {{ .Port }}
         readinessProbe:
           httpGet:
             path: /readyz
-            port: ${PORT}
+            port: {{ .Port }}
 ---
 apiVersion: v1
 kind: Service
