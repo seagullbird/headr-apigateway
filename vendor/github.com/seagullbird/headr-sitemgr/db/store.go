@@ -5,6 +5,7 @@ import (
 	"github.com/jinzhu/gorm"
 	// used for database connection
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"os"
 )
 
 // Store deals with database operations with table site.
@@ -23,9 +24,10 @@ type databaseStore struct {
 
 // New creates a databaseStore instance
 func New(logger log.Logger) Store {
-	db, err := gorm.Open("postgres", "host=postgresql-postgresql port=5432 user=postgres dbname=postgres password=qBDXNlz276 sslmode=disable")
+	args := os.Getenv("POSTGRESQL_ARGS")
+	db, err := gorm.Open("postgres", args)
 	if err != nil {
-		logger.Log("error_desc", "Failed to connected to PostgreSQL", "error", err)
+		logger.Log("error_desc", "Failed to connected to PostgreSQL", "args", args, "error", err)
 	}
 	db.AutoMigrate(&Site{})
 	return &databaseStore{
