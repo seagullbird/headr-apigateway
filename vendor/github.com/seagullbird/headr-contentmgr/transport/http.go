@@ -79,6 +79,12 @@ func err2code(err error) int {
 	case ErrBadRouting:
 		return http.StatusBadRequest
 	}
+	if err.Error() == "post not found" {
+		return http.StatusNotFound
+	}
+	if err.Error() == "title already exists" {
+		return http.StatusBadRequest
+	}
 	return http.StatusInternalServerError
 }
 
