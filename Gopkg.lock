@@ -83,7 +83,7 @@
   branch = "master"
   name = "github.com/seagullbird/headr-common"
   packages = ["mq","mq/client","mq/dispatch"]
-  revision = "866576416132ba22c5bb35ec91e1a42f46346380"
+  revision = "ed62374b99ddee4f3953955af3906e393f6411bd"
 
 [[projects]]
   branch = "master"
@@ -95,13 +95,13 @@
   branch = "master"
   name = "github.com/seagullbird/headr-repoctl"
   packages = ["config","service"]
-  revision = "2e7ca24ae4f005eecbc8a691b83d2141779e7b58"
+  revision = "1113198f3c3b5407b5d187b316b5a43a345c2b29"
 
 [[projects]]
   branch = "master"
   name = "github.com/seagullbird/headr-sitemgr"
   packages = ["config","db","endpoint","pb","service","transport"]
-  revision = "ea5892e0de2a235dc434563cd6471b083136bead"
+  revision = "072f4c713af634db980d71e048464f4d0b5d42ab"
 
 [[projects]]
   branch = "master"
